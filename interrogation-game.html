@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>特捜部：尋問室</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+      background: #0d1117; color: #c9d1d9;
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; padding: 24px 16px 40px;
+    }
+    .header {
+      width: 100%; max-width: 720px;
+      background: linear-gradient(135deg, #161b22 0%, #1c2430 100%);
+      border: 1px solid #30363d; border-top: 3px solid #c0392b;
+      border-radius: 8px; padding: 18px 24px 16px; margin-bottom: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.6); position: relative; overflow: hidden;
+    }
+    .header::before {
+      content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+      pointer-events: none;
+    }
+    .title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .badge { background: #c0392b; color: #fff; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
+    .title { font-size: 16px; font-weight: 700; color: #e6edf3; letter-spacing: 0.5px; }
+    .meter-label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+    .meter-label { font-size: 11px; color: #8b949e; letter-spacing: 1px; }
+    .meter-value { font-size: 22px; font-weight: 700; color: #e74c3c; font-variant-numeric: tabular-nums; }
+    .meter-track { width: 100%; height: 18px; background: #21262d; border-radius: 9px; border: 1px solid #30363d; overflow: hidden; }
+    .meter-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #8b1a1a 0%, #c0392b 50%, #e74c3c 100%);
+      border-radius: 9px; transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); position: relative;
+    }
+    .meter-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 50%; background: rgba(255,255,255,0.08); border-radius: 9px 9px 0 0; }
+    .case-file {
+      width: 100%; max-width: 720px;
+      background: #161b22; border: 1px solid #30363d; border-left: 4px solid #e67e22;
+      border-radius: 6px; padding: 12px 16px; margin-bottom: 12px;
+      display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13px;
+    }
+    .case-file-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .case-number { font-size: 10px; color: #8b949e; letter-spacing: 1px; font-weight: 700; }
+    .case-name { font-size: 15px; font-weight: 700; color: #e6edf3; }
+    .case-label { color: #6e7681; white-space: nowrap; font-size: 12px; }
+    .case-value { color: #c9d1d9; font-size: 12px; line-height: 1.5; }
+    .case-value.highlight { color: #ffa657; font-weight: 600; }
+    .stats-bar {
+      width: 100%; max-width: 720px;
+      display: flex; justify-content: space-between; align-items: center;
+      background: #161b22; border: 1px solid #30363d; border-radius: 6px;
+      padding: 8px 16px; margin-bottom: 12px; font-size: 13px; color: #8b949e;
+    }
+    .remaining { color: #f0a500; font-weight: 700; font-size: 14px; }
+    .remaining span { color: #ffd700; font-size: 18px; }
+    .chat-section {
+      width: 100%; max-width: 720px;
+      background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+      padding: 16px; margin-bottom: 12px; height: 360px;
+      overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .chat-section::-webkit-scrollbar { width: 6px; }
+    .chat-section::-webkit-scrollbar-track { background: #0d1117; }
+    .chat-section::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    .msg-suspect { display: flex; gap: 12px; align-items: flex-start; }
+    .avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; border: 2px solid #30363d; }
+    .avatar-suspect { background: #21262d; }
+    .avatar-player  { background: #1a2a3a; border-color: #264f78; }
+    .bubble-wrap { display: flex; flex-direction: column; gap: 3px; max-width: calc(100% - 58px); }
+    .bubble-name { font-size: 11px; color: #8b949e; letter-spacing: 0.5px; }
+    .bubble { padding: 10px 14px; font-size: 14px; line-height: 1.6; }
+    .bubble-suspect { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; border-radius: 0 10px 10px 10px; }
+    .msg-player { display: flex; gap: 12px; align-items: flex-start; flex-direction: row-reverse; }
+    .msg-player .bubble-wrap { align-items: flex-end; }
+    .bubble-player { background: #1a3a5c; border: 1px solid #264f78; color: #a8d4f5; border-radius: 10px 0 10px 10px; }
+    .bubble-name-player { text-align: right; }
+    .msg-system { text-align: center; font-size: 11px; color: #6e7681; font-style: italic; padding: 2px 0; }
+    .input-section { width: 100%; max-width: 720px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px; }
+    .input-row { display: flex; gap: 10px; }
+    .question-input { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; font-size: 14px; padding: 10px 14px; font-family: inherit; outline: none; transition: border-color 0.2s; }
+    .question-input::placeholder { color: #484f58; }
+    .question-input:focus { border-color: #58a6ff; box-shadow: 0 0 0 3px rgba(88,166,255,0.1); }
+    .question-input:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-interrogate { background: #c0392b; color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; letter-spacing: 0.5px; transition: background 0.2s, transform 0.1s; }
+    .btn-interrogate:hover:not(:disabled) { background: #e74c3c; }
+    .btn-interrogate:active:not(:disabled) { transform: scale(0.97); }
+    .btn-interrogate:disabled { opacity: 0.4; cursor: not-allowed; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.80); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 36px 32px; max-width: 460px; width: 100%; text-align: center; box-shadow: 0 8px 48px rgba(0,0,0,0.8); animation: pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+    @keyframes pop-in { from { opacity: 0; transform: scale(0.85) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    .modal-icon { font-size: 52px; margin-bottom: 10px; }
+    .modal-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .modal-title.win  { color: #3fb950; }
+    .modal-title.lose { color: #f85149; }
+    .modal-body { font-size: 14px; color: #8b949e; line-height: 1.8; margin-bottom: 22px; }
+    .modal-verdict { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px 14px; font-size: 13px; color: #8b949e; text-align: left; margin-bottom: 20px; line-height: 1.7; }
+    .modal-verdict strong { color: #e6edf3; }
+    .btn-modal { background: #238636; color: #fff; border: none; border-radius: 6px; padding: 12px 28px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; transition: background 0.2s; margin: 4px; }
+    .btn-modal:hover { background: #2ea043; }
+    .btn-gray { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; }
+    .btn-gray:hover { background: #30363d; }
+    .intro-overlay { display: none; position: fixed; inset: 0; background: #0d1117; z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+    .intro-overlay.active { display: flex; }
+    .intro-box { max-width: 520px; width: 100%; padding: 40px 32px; text-align: center; }
+    .intro-stamp { font-size: 11px; letter-spacing: 3px; color: #c0392b; font-weight: 700; margin-bottom: 28px; }
+    .intro-case-name { font-size: 26px; font-weight: 700; color: #e6edf3; line-height: 1.4; margin-bottom: 10px; }
+    .intro-sub { font-size: 13px; color: #6e7681; margin-bottom: 32px; line-height: 1.7; white-space: pre-line; }
+    .btn-start { background: #c0392b; color: #fff; border: none; border-radius: 6px; padding: 14px 40px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; letter-spacing: 1px; transition: background 0.2s; width: 100%; }
+    .btn-start:hover { background: #e74c3c; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+    .shake { animation: shake 0.4s ease; }
+    @keyframes pulse-red { 0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,0.4)} 50%{box-shadow:0 0 0 8px rgba(231,76,60,0)} }
+    .meter-fill.bump { animation: pulse-red 0.7s ease; }
+    /* 画面フラッシュ */
+    .screen-flash { position: fixed; inset: 0; pointer-events: none; z-index: 999; opacity: 0; transition: opacity 0.08s; }
+    .screen-flash.red   { background: rgba(192,57,43,0.18); }
+    .screen-flash.white { background: rgba(255,255,255,0.12); }
+    .screen-flash.on    { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div class="screen-flash" id="screen-flash"></div>
+
+<!-- イントロ -->
+<div class="intro-overlay active" id="intro-overlay">
+  <div class="intro-box">
+    <div class="intro-stamp">METROPOLITAN POLICE DEPT. — CASE FILE</div>
+    <div class="intro-case-name" id="intro-case-name">事件名をロード中…</div>
+    <div class="intro-sub" id="intro-sub"></div>
+    <button class="btn-start" onclick="startGame()">尋問を開始する</button>
+  </div>
+</div>
+
+<!-- ヘッダー -->
+<div class="header">
+  <div class="title-row">
+    <span class="badge">CONFIDENTIAL</span>
+    <span class="title" id="header-title">特捜部：尋問室</span>
+  </div>
+  <div class="meter-label-row">
+    <span class="meter-label">🔴 自白メーター</span>
+    <span class="meter-value" id="meter-value">0%</span>
+  </div>
+  <div class="meter-track"><div class="meter-fill" id="meter-fill"></div></div>
+</div>
+
+<!-- 事件ファイル -->
+<div class="case-file">
+  <div class="case-file-header">
+    <span class="case-number" id="case-number">CASE #----</span>
+    <span class="case-name" id="case-name-display">—</span>
+  </div>
+  <span class="case-label">発生日時</span><span class="case-value" id="cf-datetime">—</span>
+  <span class="case-label">発生場所</span><span class="case-value" id="cf-location">—</span>
+  <span class="case-label">被害・容疑</span><span class="case-value highlight" id="cf-damage">—</span>
+  <span class="case-label">容疑者</span><span class="case-value" id="cf-suspect">—</span>
+</div>
+
+<!-- ステータスバー -->
+<div class="stats-bar">
+  <span>担当刑事：<strong style="color:#e6edf3">警部補 剛田 鉄也</strong></span>
+  <span class="remaining">残り質問回数：<span id="remaining-count">10</span> 回</span>
+</div>
+
+<!-- チャットログ -->
+<div class="chat-section" id="chat-log"></div>
+
+<!-- 入力 -->
+<div class="input-section">
+  <div class="input-row">
+    <input type="text" class="question-input" id="question-input" placeholder="容疑者に問い詰める言葉を入力…" maxlength="200" />
+    <button class="btn-interrogate" id="btn-interrogate" onclick="handleInterrogate()">問い詰める</button>
+  </div>
+</div>
+
+<!-- 勝利モーダル -->
+<div class="modal-overlay" id="modal-win">
+  <div class="modal">
+    <div class="modal-icon">⚖️</div>
+    <div class="modal-title win">自白成功！事件解決！</div>
+    <div class="modal-body" id="win-body"></div>
+    <div class="modal-verdict" id="win-verdict"></div>
+    <button class="btn-modal" onclick="showNewCaseOrRetry(true)">次の事件へ</button>
+    <button class="btn-modal btn-gray" onclick="showNewCaseOrRetry(false)">同じ事件をリトライ</button>
+  </div>
+</div>
+
+<!-- 敗北モーダル -->
+<div class="modal-overlay" id="modal-lose">
+  <div class="modal">
+    <div class="modal-icon">📁</div>
+    <div class="modal-title lose">尋問失敗 — 迷宮入り</div>
+    <div class="modal-body" id="lose-body"></div>
+    <div class="modal-verdict" id="lose-verdict"></div>
+    <button class="btn-modal" onclick="showNewCaseOrRetry(true)">別の事件を担当する</button>
+    <button class="btn-modal btn-gray" onclick="showNewCaseOrRetry(false)">同じ事件をリトライ</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Web Audio API — SE生成
+// ============================================================
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playTone(opts) {
+  // opts: { type, freq, freq2, duration, attack, decay, volume, filter, filterFreq }
+  try {
+    const ctx  = getAudioCtx();
+    const gain = ctx.createGain();
+    const osc  = ctx.createOscillator();
+    gain.connect(ctx.destination);
+    osc.connect(gain);
+    osc.type = opts.type || "sine";
+    const now = ctx.currentTime;
+    const vol = opts.volume || 0.4;
+    osc.frequency.setValueAtTime(opts.freq || 440, now);
+    if (opts.freq2) osc.frequency.exponentialRampToValueAtTime(opts.freq2, now + (opts.duration || 0.3));
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(vol, now + (opts.attack || 0.01));
+    gain.gain.exponentialRampToValueAtTime(0.001, now + (opts.decay || opts.duration || 0.3));
+    osc.start(now);
+    osc.stop(now + (opts.duration || 0.3) + 0.05);
+  } catch(e) {}
+}
+
+function playNoise(duration, volume, highpass) {
+  try {
+    const ctx    = getAudioCtx();
+    const buf    = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+    const data   = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const src    = ctx.createBufferSource();
+    src.buffer   = buf;
+    const filt   = ctx.createBiquadFilter();
+    filt.type    = highpass ? "highpass" : "bandpass";
+    filt.frequency.value = highpass || 800;
+    const gain   = ctx.createGain();
+    gain.gain.setValueAtTime(volume || 0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    src.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
+    src.start(); src.stop(ctx.currentTime + duration + 0.05);
+  } catch(e) {}
+}
+
+// SE定義
+const SE = {
+  // 問い詰めボタン押下：鈍い机ドン音
+  interrogate() {
+    playNoise(0.12, 0.5, 60);
+    playTone({ type:"sine", freq:80, freq2:40, duration:0.15, attack:0.005, decay:0.15, volume:0.35 });
+  },
+  // strong（証拠）：緊張感のある不協和音
+  strong() {
+    playTone({ type:"sawtooth", freq:440, freq2:220, duration:0.25, attack:0.01, decay:0.25, volume:0.25 });
+    setTimeout(() => playTone({ type:"square", freq:330, duration:0.2, attack:0.01, decay:0.2, volume:0.15 }), 80);
+  },
+  // core（事件核心）：低い警告音
+  core() {
+    playTone({ type:"sine", freq:220, freq2:180, duration:0.3, attack:0.02, decay:0.3, volume:0.3 });
+  },
+  // pressure（追及）：鋭いクリック
+  pressure() {
+    playTone({ type:"square", freq:600, freq2:400, duration:0.1, attack:0.005, decay:0.1, volume:0.2 });
+  },
+  // other：小さなペン置き音
+  other() {
+    playTone({ type:"triangle", freq:1200, duration:0.06, attack:0.003, decay:0.06, volume:0.12 });
+  },
+  // 自白・クライマックス
+  confession() {
+    [0, 120, 260, 420].forEach((t, i) => {
+      setTimeout(() => {
+        playTone({ type:"sawtooth", freq:110 + i*55, freq2:55, duration:0.4, attack:0.01, decay:0.4, volume:0.3 - i*0.04 });
+        playNoise(0.3, 0.15, 200);
+      }, t);
+    });
+  },
+  // 勝利
+  win() {
+    [0,150,300,500].forEach((t,i) => {
+      setTimeout(() => playTone({ type:"sine", freq:[523,659,784,1047][i], duration:0.35, attack:0.01, decay:0.35, volume:0.35 }), t);
+    });
+  },
+  // 敗北
+  lose() {
+    [0,200,450].forEach((t,i) => {
+      setTimeout(() => playTone({ type:"sine", freq:[300,240,180][i], duration:0.5, attack:0.02, decay:0.5, volume:0.3 }), t);
+    });
+  },
+  // 残り少ない警告
+  warning() {
+    playTone({ type:"square", freq:880, freq2:660, duration:0.15, attack:0.005, decay:0.15, volume:0.2 });
+    setTimeout(() => playTone({ type:"square", freq:880, freq2:660, duration:0.15, attack:0.005, decay:0.15, volume:0.2 }), 200);
+  },
+  // メーター上昇ビープ
+  meterUp(inc) {
+    const freq = inc >= 30 ? 660 : inc >= 15 ? 500 : 380;
+    playTone({ type:"sine", freq, duration:0.12, attack:0.005, decay:0.12, volume:0.18 });
+  }
+};
+
+// ============================================================
+// 画面フラッシュ
+// ============================================================
+function flash(color) {
+  const el = document.getElementById("screen-flash");
+  el.className = `screen-flash ${color} on`;
+  setTimeout(() => el.classList.remove("on"), 80);
+  setTimeout(() => el.classList.remove(color), 200);
+}
+
+// ============================================================
+// 応答ライブラリ
+// phase: 0=序盤(0-33%), 1=中盤(34-66%), 2=終盤(67-99%)
+// {W} = プレイヤー入力から抽出した単語
+// ============================================================
+const RESPONSE_LIB = {
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ART-001 美術館・名画
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  "ART-001": {
+    strong: [
+      // 序盤
+      ["そ、そのカメラの映像はシステム障害です！私は関係ない！",
+       "偽造ですよ！その{W}は誰かに操作されている！",
+       "指紋？私は警備員です。触れて当然でしょう！",
+       "{W}の話は知らない。完全に知らない！",
+       "証拠があるというなら見せてください。今すぐ！"],
+      // 中盤
+      ["……{W}が示す通りなら……（唇を噛む）いや、それでも違う！",
+       "そのIPアドレスは……いや、私は……（目が泳ぐ）",
+       "{W}の件は、誰かに利用された可能性が……（口ごもる）",
+       "……少し、待ってください。（額に汗が滲む）その{W}、どこで入手した？",
+       "……（拳を握り締める）{W}については、弁護士と相談してから答えます。"],
+      // 終盤
+      ["……（長い沈黙）{W}については……否定できません。",
+       "もう……もう弁護士を呼んでください。それ以上は話せない。（手が震えている）",
+       "{W}……その話をするなら、一つだけ言わせてください。私だけじゃないんです。",
+       "……わかった。全部じゃないが、少しだけ話します。（視線を落とす）",
+       "（深呼吸）……{W}の件は、確かに関わりました。でも、強制されたんです。"]
+    ],
+    core: [
+      ["名画？あの絵なら30年間守り続けてきた！私がなぜ盗む必要があるんですか！",
+       "展示室には入りましたよ、点検のために！深夜のルーティンです！",
+       "贋作だと？……今はそんな話はしていない。あの絵は本物だった！",
+       "{W}は知っている。30年この美術館にいれば誰でも知っている！",
+       "あの絵の価値は私が一番わかっている……だからこそ守ってきたんです！"],
+      ["……{W}の話は、少し、複雑なんです。（視線を逸らす）でも私は関係ない。",
+       "あの{W}……確かに知っています。でもそれは仕事上の知識です！",
+       "……展示室に入ったのは本当です。でもそれだけだ。それだけ！",
+       "（声が低くなる）{W}については……答えたくない。",
+       "あの絵の……あの絵のことを思うと……（目が潤む）いや、何でもない。"],
+      ["……あの{W}は、美しかった。（呟くように）30年、毎日見てきたんです。",
+       "（深呼吸）……{W}については、否定しません。ただ、全部私の意志じゃなかった。",
+       "……8000万の借金が……あって……（声が詰まる）",
+       "画商から持ちかけられた話を……断れなかった……",
+       "……全部話す前に……家族には、知らせないでください。"]
+    ],
+    pressure: [
+      ["私を犯人扱いするとは！30年間の信頼を何だと思っているんですか！",
+       "認める？何を認めるんですか！証拠を見せてください、確定的な証拠を！",
+       "しつこい！弁護士なしでは何も話しません！",
+       "お前が？そういう言い方はやめてもらいたい！私は容疑者に過ぎない！",
+       "冤罪というものがあるんです！知っていますか！？"],
+      ["……（机を見つめたまま）もういい加減にしてください。私には家族がいるんです。",
+       "白状しろ？笑わせないでください。あなた方に何がわかるというんですか。",
+       "……認めろと言われても、認めることは何も……（口ごもる）",
+       "（静かな怒りで）{W}……その言葉は侮辱です。私は30年間……",
+       "弁護士を呼べ！今すぐ！それだけ言う！"],
+      ["…（静かに）もう疲れました。でも今は何も言えない。",
+       "……{W}。そう言われると、もう言い訳も思い浮かばない。",
+       "（目を閉じて）……少しだけ聞いてくれますか。私だって追い詰められていた。",
+       "……弁護士が来たら、全部話します。今は……今は無理です。",
+       "（泣き崩れそうな声で）家族に……家族には言わないでほしい……"]
+    ],
+    other: [
+      ["私は何も知りません。", "黙秘権を行使します。", "関係ない話はやめてください。",
+       "……（窓の外を見つめている）", "弁護士を呼んでください。",
+       "どれだけここに置くつもりですか。", "……（腕を組んで俯く）",
+       "その質問には答えられません。", "……はぁ。（深いため息）"],
+      ["……そういう質問に答える義務はありません。", "関係のない話ですね。",
+       "……{W}？それが何だというんですか。", "（ため息）また同じことを聞くんですか。",
+       "私はもう何も言いたくない。", "……（コップの水を一口飲む）",
+       "お茶でも出してもらえますか。長くなりそうだ。",
+       "……（ゆっくりと首を振る）", "それは答えなくていい質問だ。"],
+      ["…（長い沈黙の後）何を聞きたいんですか。", "……{W}については答えません。",
+       "疲れました。本当に疲れた。", "……もう終わりにしてください。",
+       "弁護士が来るまでは何も話せません。",
+       "……（静かに目を閉じる）", "もう……どうでもいい。",
+       "（ぼそっと）家に帰りたい。"]
+    ]
+  },
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // DATA-002 防衛省データ流出
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  "DATA-002": {
+    strong: [
+      ["そのアクセスログは業務上の正規作業です！上司の許可も取っていた！",
+       "{W}？それはシステム監査の一環で私が生成したものです。何もおかしくない！",
+       "USBは業務用デバイスです。全部登録済みのはず！",
+       "バックドア？そんなもの私は知らない！専門用語を使えばいいってもんじゃない！",
+       "{W}の記録は意図的に作られた可能性がある。私を嵌めようとしている！"],
+      ["……{W}が示す通りなら、説明がつかない部分があります。でも意図的ではない。",
+       "そのIPアドレス……外部との連携テストの記録です……（口が止まる）",
+       "{W}の件は、正直に言えば……複雑な事情があります。今は話せません。",
+       "……（視線が揺れる）その{W}は……私が出力したものですが、理由が……",
+       "……少し、待ってください。（静かに手を組む）{W}の件は整理が必要です。"],
+      ["……（長い沈黙）{W}については……否定できません。",
+       "もう……もう少し聞いてもらえますか。私が何をさせられたか。",
+       "…全部話します。でも一つだけ聞いてほしい。私は脅されていた。",
+       "（震える声で）夫が……夫のことを……",
+       "……わかりました。全部話す。でも家族だけは……"]
+    ],
+    core: [
+      ["オペレーションNXには私もアクセス権があります。業務上の権限で犯罪じゃない！",
+       "機密データを扱うのは私の仕事です！それの何が問題なんですか！",
+       "……{W}は確かに私が触れました。でも理由は……今は言えない。",
+       "サーバーに深夜アクセスすることは珍しくない！緊急対応だったんです！",
+       "{W}の暗号化は私が担当でした。だから触れるのは当然だ！"],
+      ["……{W}の話をするなら、前提条件があります。（視線が揺れる）",
+       "データを扱うのは日常業務です。でも……あの夜は違った。（口を閉ざす）",
+       "{W}……そう、確かにそのファイルにアクセスした。でも命令に従っただけです。",
+       "……（深呼吸）4.3GBという数字……どこから出てきたんですか。（声が震える）",
+       "NXについては……（長い沈黙）……私の所管でした。それは認めます。"],
+      ["……{W}は、私が流した。でも自分の意志じゃなかった。",
+       "（静かに）夫のことを……知っていますか。（目が潤む）",
+       "全部話す前に……家族には知らせないでほしい。お願いします。",
+       "……工作員から……電話が来て……（声が途切れる）",
+       "夫を……夫を守りたかっただけなんです。それだけなんです。"]
+    ],
+    pressure: [
+      ["スパイ？！その言葉は侮辱だ！私は国家に忠誠を誓った人間ですよ！",
+       "認める？何を？証拠があるなら見せてください！状況証拠だけでしょう！",
+       "黙秘します。弁護士なしでは何も話せません！",
+       "裏切り者だと？！……（声が震える）私がどういう状況に置かれていたか……",
+       "売った？その言葉を使わないでください！私は……私は……（俯く）"],
+      ["……売った？私が？（声が震える）そんなことを言わないでください。",
+       "……裏切り者……（静かに繰り返す）……そう見えますか、私が。",
+       "白状しろと言われても……何から話せばいいか……（俯く）",
+       "（ゆっくり）認めろと言われれば、認めたくなる。でも……でも違うんです。",
+       "……{W}。その言葉を聞いて……もう言い訳を考える気力がない。"],
+      ["……（深呼吸）わかりました。少しだけ聞いてください。",
+       "もう嘘はつけない。……{W}、その通りです。",
+       "（震える声で）夫が……夫が脅されていたんです。私が断れるわけがなかった。",
+       "……全部話します。弁護士を立ち会わせてもらえれば。",
+       "……もうどうにでもなれ。（静かに覚悟した顔で）"]
+    ],
+    other: [
+      ["弁護士なしでは話せません。", "……（手元を見つめている）",
+       "全部状況証拠でしょう。", "私は疲れました。",
+       "それはどういう意味ですか。", "……（静かに目を閉じる）",
+       "お水をもらえますか。", "……（メモ帳を眺めている）"],
+      ["……{W}については回答しません。", "（ため息）また同じ質問ですか。",
+       "私には答える義務はない。", "……少し休ませてもらえますか。",
+       "関係のない話はやめてください。",
+       "……（静かにペンを置く）", "今日はもう話すことはない。"],
+      ["…（長い沈黙）", "……もう何も言いたくない。",
+       "{W}……（静かに呟いてまた黙る）", "弁護士を待ちます。",
+       "（窓の外を見つめたまま何も言わない）",
+       "……（目を閉じて深呼吸する）", "家族に連絡させてください。"]
+    ]
+  },
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // BANK-003 銀行強盗
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  "BANK-003": {
+    strong: [
+      ["あの車は1ヶ月前に売った！売ったんだ！書類が……どこかにあるはずだ！",
+       "目撃者？人違いだろ！俺みたいな顔の男はゴロゴロいる！",
+       "{W}？俺の指紋があったとして何だ！元従業員なんだから当然だろ！",
+       "ナンバープレートが俺の車？！なら盗まれたんだ！被害届を出す！",
+       "防犯カメラ？全部壊されてたんだろ！なら映ってないはずだ！"],
+      ["……{W}の話か。（腕を組む）知らねえな、そんなもん。",
+       "目撃者がいる？（ぴくりとする）……どこの誰が見たって言うんだ。",
+       "{W}……（舌打ち）……その話、どこから出てきた？",
+       "……（ゆっくり体を起こして）{W}については……答える必要がない。",
+       "証拠があるって言うなら見せてみろよ。（腕を組んで顎を上げる）"],
+      ["……（机を拳で軽く叩く）{W}の件は……俺は関係ねえ。",
+       "もういい加減にしろよ。俺には子供がいるんだ。……（視線が揺れる）",
+       "{W}……（長い沈黙）……弁護士、呼んでくれ。",
+       "……（椅子に深くもたれて）なあ、もう終わりにしようぜ。",
+       "……俺だって、好き好んでやったわけじゃ……（ぼそっと、すぐ黙る）"]
+    ],
+    core: [
+      ["銀行の構造？3年働いてたんだから知ってて当然だろ！何が悪い！",
+       "金庫の場所なんか警備員なら誰でも知ってる。俺だけじゃねえ！",
+       "強盗？俺がやったって言いたいのか！ふざけんな！",
+       "{W}については熟知してるよ、元警備員だからな！だから何だ！",
+       "あの銀行の間取り？夢に見るくらい覚えてるわ。三年も働いたんだから！"],
+      ["……{W}の話か。（目が泳ぐ）俺は関係ねえって言ってるだろ。",
+       "あの銀行の……{W}？知ってるよ、当たり前だろ。でもそれが何だ！",
+       "（舌打ち）{W}のことは……詳しく話す義務はねえ。",
+       "……（静かに）あの銀行は俺に何をしたか……知ってるか？",
+       "解雇通知……（呟く）あの日から全部狂った。でも俺は……（黙る）"],
+      ["……{W}。（低い声で）……俺を追い詰めてどうしたいんだ。",
+       "（ため息）……{W}については……少し、聞いてくれ。",
+       "……（拳を握る）あの銀行は俺をクビにした。でも……だからって……",
+       "家族には……頼む……家族だけは……（声が詰まる）",
+       "……（長い沈黙の後、絞り出すように）わかった……わかったよ……"]
+    ],
+    pressure: [
+      ["犯人扱いするな！俺は何もしてねえって言ってるだろ！",
+       "アリバイ？家にいたって言ってる！証明できないのはそっちの問題だ！",
+       "仲間を売れ？何の話だ！俺はひとりだ！",
+       "うるせえ！もう黙秘する！弁護士呼べ！",
+       "お前には関係ない！俺の事情はお前にはわからない！"],
+      ["……（机を叩く）うるさい！もう関係ねえ話はするな！",
+       "白状しろ？笑わせんな。証拠持ってきてから言えよ。",
+       "……{W}。（静かになる）……俺だって追い詰められてたんだ。",
+       "（じっと刑事を見つめて）……お前、子供いるか？（低い声で）",
+       "……嘘だ？（苦笑い）……そうだな。全部嘘でもないけど……"],
+      ["……（長い沈黙の後、絞り出すように）わかった……わかったよ。",
+       "もういい……{W}の件は……俺が……（口を閉じる）",
+       "家族には……頼む……家族だけは……（声が詰まる）",
+       "……（目に涙を浮かべて）全部言う。でも、子供だけは……",
+       "くそっ……くそっ……（何度も呟いて俯く）"]
+    ],
+    other: [
+      ["話すことは何もない。", "それ俺に関係あるか？",
+       "……（腕を組んで天井を見る）", "弁護士呼んでくれ。",
+       "腹減った。飯はまだか。", "……（黙って俯く）",
+       "いい加減にしろよ。", "知らねえって言ってるだろ。"],
+      ["……{W}？知らねえな。", "関係ない話だ。",
+       "（舌打ち）また同じことか。", "俺は疲れた。",
+       "弁護士なしでは話さない。",
+       "……（ゆっくり首を横に振る）", "眠い。もう帰らせてくれ。"],
+      ["…（低い声で）もういい加減にしろ。", "……{W}。（それだけ言って黙る）",
+       "家族には……言うなよ。", "……（ゆっくり目を閉じる）",
+       "弁護士が来るまで待つ。",
+       "……（静かに机に額を乗せる）", "もう……何も言いたくない。"]
+    ]
+  },
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // POISON-004 毒物混入
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  "POISON-004": {
+    strong: [
+      ["砒素の購入履歴？ガーデニング用の薬品です。製薬会社の知識があれば合法的に取得できる。",
+       "その証拠は状況証拠に過ぎない。科学的な因果関係を証明できますか？私は専門家ですよ。",
+       "{W}？共用部には私がいて当然です。管理組合長ですから。",
+       "指紋が出た？私は管理者です。至る所に指紋があって当然でしょう。",
+       "検出されたとして……それが私に繋がる直接証拠ではありません。冷静に考えてください。"],
+      ["……{W}については、慎重に答える必要があります。（静かに手を組む）",
+       "{W}の購入記録……（一瞬表情が固まる）……それは業務上の必要からです。",
+       "……（静かに）{W}の件は、法的な解釈の問題です。弁護士に確認が必要です。",
+       "……（深呼吸を一つ）{W}について詳しく話す前に、状況を整理させてください。",
+       "その分析結果は……（指先が微かに震える）……信頼できるものですか？"],
+      ["……（長い沈黙）{W}については……否定しません。",
+       "冷静に話しましょう。（静かに、しかし手が微かに震えている）",
+       "{W}……そう、私は知っている。全部知っている。",
+       "……もう終わりにしましょう。（穏やかに、しかし目に静かな炎がある）",
+       "……（静かに）301号室の……桐原のことを……知っていますか。"]
+    ],
+    core: [
+      ["被害者と私の関係？騒音問題でもめましたが一般的なトラブルです。",
+       "共用部の飲料に混入した？私以外にも管理キーを持つ人間がいる。",
+       "保険金？……私は受取人では……（手が微かに震える）……関係ない！",
+       "{W}については、私より詳しい関係者が他にいるはずです。",
+       "住人との接触は管理業務の一環です。毎日顔を合わせていた。それだけです。"],
+      ["……{W}の件は、複雑な事情があります。（静かに目を伏せる）",
+       "被害者とは……確かに何度か話しました。でも害意はなかった。",
+       "{W}……（ゆっくり深呼吸）……冷静に話しましょう。",
+       "……（目を細めて）{W}については……4年前の話が関係しています。",
+       "保険金の受取人……（静かに）……それは偶然ではないかもしれない。"],
+      ["……{W}については……正直に言えば……（長い沈黙）",
+       "301号室の住人は……4年前から……（口を閉じる）",
+       "（静かに）もう終わりにしましょう、というのは……少し早いかもしれないが。",
+       "……（静かに）警察は動かなかった。弁護士も無力だった。だから……",
+       "……後悔していない。（静かに、しかしはっきりと）"]
+    ],
+    pressure: [
+      ["犯人だと？笑わせないでください。私は住人の安全を守る立場の人間ですよ。",
+       "認める？何を？証拠もなしに感情で話を進めないでください。",
+       "黙秘します。弁護士が来るまでは何も答えません。",
+       "殺そうとした？（静かに繰り返す）……その言葉は慎重に使うべきです。",
+       "動機？……（ゆっくりと）動機が何かを、あなた方に理解できるとは思えませんが。"],
+      ["……動機だと？（静かな怒り）あなたは私が何十年積み上げてきたものを何もわかっていない。",
+       "{W}。……（静かに繰り返す）……その言葉を使うなら、理由を話す必要がある。",
+       "……（静かに）私が人を傷つけるとしたら、それには相応の理由がある。",
+       "冷静に話しましょう。（逆に刑事を制するように）あなたが感情的になっても解決しない。",
+       "……（静かに机を見つめたまま）正義とは、何だと思いますか？"],
+      ["……（深く息を吸う）301号室の桐原は……4年前……（口を閉じる）",
+       "……もう終わりにしましょう。（穏やかに、しかし目に力がある）",
+       "全部話す前に……一つだけ聞いてください。警察は動かなかった。弁護士も。",
+       "……私がやった。後悔はしていない。（静かに、眼差しに狂気の静けさ）",
+       "……妻のことを……誰も守ってくれなかった。（声が僅かに揺れる）"]
+    ],
+    other: [
+      ["弁護士が来るまでは答えません。", "……（静かにコップの水を飲む）",
+       "それを証明する義務はあなた方にあります。", "……冷静に話しましょう。",
+       "私は健康です。動揺していない。", "……（静かに目を閉じる）",
+       "……（ゆっくりと指を組む）", "今日は天気がいいですね。（静かに窓を見る）"],
+      ["……{W}については慎重に答える必要があります。", "（ゆっくりと）関係のない話ですね。",
+       "証拠がなければ意味がない。", "……（窓の外を静かに見る）",
+       "私は落ち着いています。あなたも落ち着いてください。",
+       "……（静かにため息をつく）", "もう少し整理してから話しましょう。"],
+      ["…（長い静寂）", "……{W}。（静かに呟く）",
+       "冷静に、冷静に。（自分に言い聞かせるように）",
+       "弁護士を待ちます。", "……もう終わりにしましょう。",
+       "……（静かに目を閉じる）", "……妻に会いたい。（ぼそっと）"]
+    ]
+  },
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ARSON-005 自社ビル放火・保険金詐欺事件
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  "ARSON-005": {
+    strong: [
+      // 序盤
+      ["出火当時？自宅にいました！妻に確認してください！",
+       "{W}が出たとしても、私はあのビルに何年も出入りしていた。当然でしょう！",
+       "防犯カメラに映っていた？それが私だという証明にはならない！",
+       "{W}……ガソリンの匂い？あのビルは古い。配管から漏れていた可能性がある！",
+       "指紋が出た？オーナーなんだから指紋があって当たり前じゃないですか！"],
+      // 中盤
+      ["……{W}については……（額に汗が滲む）……業務上の話です。",
+       "保険の契約内容を知っている？経営者なら当然の知識です。何がおかしい！",
+       "……{W}の件は……（視線が揺れる）……顧問弁護士に確認します。",
+       "火災前に資産を移していた？……偶然です。資産整理は以前から検討していた。",
+       "……（静かに）{W}については、答える前に少し考えさせてください。"],
+      // 終盤
+      ["……（長い沈黙）{W}については……否定しきれない部分がある。",
+       "……会社の負債は……想像を絶する額だった。（静かに）",
+       "{W}……（ゆっくり深呼吸）……弁護士を呼んでください。もう……",
+       "……社員には……社員には迷惑をかけたくなかった。（声が詰まる）",
+       "……わかった。全部は言えないが……少し話す。"]
+    ],
+    core: [
+      ["保険金？経営者が保険に入って何が悪いんですか！当然の備えだ！",
+       "会社の経営が苦しかった？どこの会社も同じですよ！私だけじゃない！",
+       "{W}は確かに把握していた。オーナーなんだから当たり前でしょう！",
+       "火災保険の満期が近かった？単なる偶然です！そんな話は初めて聞いた！",
+       "負債の話は……（声を荒げる）……プライベートな経営情報だ！答える義務はない！"],
+      ["……{W}について話すのは……（視線が揺れる）……難しい立場があります。",
+       "会社の資金繰りが……（ため息）……確かに厳しかった。でもそれだけだ。",
+       "……{W}の件は……（机を見つめる）……弁護士なしでは答えたくない。",
+       "保険金の額は……（口ごもる）……大きかった。でもそれは……",
+       "……（静かに）あのビルには……思い出もある。燃やしたくなんてなかった。"],
+      ["……{W}については……もう否定する気力がない。（俯く）",
+       "負債が……（静かに）……10億を超えていた。もう出口がなかった。",
+       "……社員に給料を払えなくなる前に……（口を閉じる）",
+       "……保険金で……全部清算するつもりだった。（静かに告白するように）",
+       "……（深く息を吸う）もう……弁護士を呼んでください。"]
+    ],
+    pressure: [
+      ["放火犯扱いするな！私は20年かけてあの会社を作ったんだ！",
+       "認める？何を？証拠もなしに！これは名誉毀損だ！",
+       "やった？私が？あなたは何もわかってない！経営の苦しさを！",
+       "吐け？言葉を選んでください！私は被疑者扱いされる人間じゃない！",
+       "白状しろ？冗談じゃない！弁護士を今すぐ呼んでください！"],
+      ["……（静かに）そういう言い方はやめてもらえますか。",
+       "……{W}。（繰り返して）……その言葉は……刺さりますね。",
+       "認めろと言われても……（俯いて）……何から話せばいいか。",
+       "……（低い声で）社員に給料を払えない経営者の気持ちが……わかりますか。",
+       "……（机を見つめたまま）私がどれだけ追い詰められていたか……"],
+      ["……（長い沈黙）……わかった。少しだけ話す。",
+       "……{W}。（静かに）……その通りです。でも……（声が詰まる）",
+       "……社員のために……本当に社員のためだと……思っていた。",
+       "……弁護士が来たら全部話します。今は……今は無理。",
+       "……（静かに）もう終わりにしましょう。"]
+    ],
+    other: [
+      ["答える必要はありません。", "……（手を組んで俯く）",
+       "弁護士を呼んでください。", "……（静かにため息をつく）",
+       "私は疲れました。", "関係のない話はやめてください。",
+       "……（窓の外を眺める）", "お水をもらえますか。"],
+      ["……{W}については黙秘します。", "また同じ質問ですか。（疲れた顔で）",
+       "……少し休ませてください。", "弁護士なしでは話せません。",
+       "……（静かに首を振る）", "何を期待しているんですか。",
+       "……今は何も言いたくない。"],
+      ["…（長い沈黙）", "……{W}。（呟いて黙る）",
+       "……もう終わりにしてください。", "弁護士を待ちます。",
+       "……（静かに目を閉じる）",
+       "……あのビルは……本当に思い出があったんだ。（ぼそっと）",
+       "……社員に……謝りたい。"]
+    ]
+  },
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // HEIST-006 宝飾店・宝石強奪事件
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  "HEIST-006": {
+    strong: [
+      // 序盤
+      ["その設計図は業務上の資料です！鑑定士なら誰でも持っている！",
+       "{W}？私の指紋がそこにあっても何の不思議もない。10年働いた店だ！",
+       "防犯システムの情報を知っている？当たり前でしょう！管理してたんだから！",
+       "{W}が証拠だと言うなら、他の従業員も同じ状況のはずだ！",
+       "共犯者？私は一人で動いていた……いや、そういう意味じゃなく！"],
+      // 中盤
+      ["……{W}については……少し……整理が必要です。（手が止まる）",
+       "設計図が……（目が揺れる）……私の手元にあったのは……偶然じゃない……かもしれない。",
+       "{W}……（低く呟く）……その話はどこから出てきた？",
+       "……（椅子に深くもたれる）防犯システムを知っていたのは確かだ。でも……",
+       "……共犯者の名前を出すつもりはない。（静かに、しかし強く）"],
+      // 終盤
+      ["……{W}については……もう否定する気力がない。",
+       "（低い声で）……わかった。少しだけ話す。でも名前は出さない。",
+       "あの店には……あの店には10年分の恨みがある。わかるか？",
+       "……（静かに）弁護士が来たら全部話す。今は……名前だけは。",
+       "……私がやった。ただし、私一人じゃない。それだけ言う。"]
+    ],
+    core: [
+      ["宝石の価値を知っている？当然でしょう！20年この道を歩いてきた！",
+       "金庫の場所を知っていた？従業員なら全員知ってる！私だけじゃない！",
+       "強奪？私がそんな……（声を荒げる）鑑定士を何だと思ってるんですか！",
+       "{W}については詳しいですよ。プロですから。それが犯罪の証拠ですか！",
+       "あの店のルーティンを知っていた？20年勤めれば誰でも知る。当たり前だ！"],
+      ["……{W}の話をするなら……（ゆっくり組んだ手を解く）……複雑な事情がある。",
+       "あの店が私に何をしたか……知っていますか。（静かな怒り）",
+       "{W}……20年分の鑑定眼で見れば……あの石の価値は……（口を閉じる）",
+       "……（ため息）退職金も出なかった。20年働いて、メールで解雇。",
+       "……あの宝石の保管場所は……確かに私が一番よく知っていた。"],
+      ["……{W}は……認める。知っていた。全部知っていた。",
+       "あの店への恨みは……（静かに）20年分ある。",
+       "……（低く）弁護士が来たら話す。でも主犯格の名前だけは……",
+       "……私は計画したわけじゃない。情報を渡しただけだ……（俯く）",
+       "……（拳を握って）あの社長の顔を見たかった。それだけだ。"]
+    ],
+    pressure: [
+      ["犯人扱いするな！私は被害者側の人間だ！20年あの店に捧げた！",
+       "認める？何を！根拠を出してから言え！",
+       "吐け？あんた、言葉を知らないのか！私はそんな扱いを受ける人間じゃない！",
+       "嘘をつくな！証拠があると言うなら全部出してみろ！",
+       "……（立ち上がりかける）これ以上は話さない！弁護士を呼べ！"],
+      ["……{W}。（静かに繰り返す）……その言葉は……効くな。",
+       "白状しろ？（苦笑い）……20年前ならそんな言葉で崩れたかもな。",
+       "……（俯いて）認めたいと思ったことは……ある。でも。",
+       "……あの店がどういう会社か……知っているか？（低い声で）",
+       "……（机を指で叩きながら）犯人ね。そう思うなら証拠を揃えればいい。"],
+      ["……（静かに）……わかった。全部は話せないが、少し話す。",
+       "……{W}。（静かに）……その通りだ。",
+       "情報を渡したのは……（声が詰まる）……認める。ただし強要された。",
+       "……主犯は私じゃない。でも協力したのは……事実だ。（目を伏せる）",
+       "……20年間、一度も盗んだことはなかった。最後の最後に……（俯く）"]
+    ],
+    other: [
+      ["話すことは何もない。", "……（腕を組んで目を閉じる）",
+       "弁護士を呼んでください。", "……（静かに天井を見上げる）",
+       "お茶でも出してもらえますか。", "……（指で机を叩く）",
+       "関係のない話はやめてくれ。", "……（目を細めて黙る）"],
+      ["……{W}？関係ない話だ。", "（ため息）また同じことを聞くのか。",
+       "……少し休ませてくれ。", "弁護士なしでは話せない。",
+       "……（静かに首を振る）", "何を期待しているんだ？",
+       "……今は何も言いたくない。"],
+      ["…（長い沈黙）", "……{W}。（低く呟く）",
+       "……もうどうでもいい気分だ。", "弁護士を待つ。",
+       "……（静かに目を閉じる）",
+       "……あの石は……今どこにあるんだろうな。（ぼそっと）",
+       "……20年か。長かった。"]
+    ]
+  }
+};
+
+// ============================================================
+// 事件定義
+// ============================================================
+const CASES = [
+  {
+    id: "ART-001",
+    name: "国立美術館・名画消失事件",
+    intro: "国立近代美術館から、時価50億円とも言われるルネサンス期の名画「聖母と黒衣の男」が忽然と姿を消した。警備システムは無効化されており、内部犯行の可能性が浮上。館内員の神田 義弘が任意同行を求められた。",
+    datetime: "20XX年3月14日（月）深夜2:17〜4:03",
+    location: "国立近代美術館 第3展示室",
+    damage: "時価推定50億円の名画「聖母と黒衣の男」消失。警備カメラ6台が同時に故障。",
+    suspectName: "神田 義弘（53歳）",
+    suspectRole: "美術館 警備部長",
+    suspectEmoji: "🎨",
+    openingLine: "……私が盗む？ 冗談は休み休み言ってください。30年間この美術館を守ってきた私が、なぜそんな真似を。証拠でもあるんですか。",
+    confessionText: "……わかった、わかりました！私が、やりました！\n借金が……8000万の借金があって、画商から話を持ちかけられた。カメラを止めるコードを教えるだけで3000万くれると……。絵は今頃、海外のコレクターのところに……全部話します。全部！",
+    winVerdict: "神田義弘は美術品密輸ルートへの絵画転売を自白。共犯の画商・藤堂との取引も発覚し、ICPOに通報された。名画の行方は現在も捜索中。",
+    loseVerdict: "神田義弘は証拠不十分で釈放。翌朝、彼の姿はどこにもなく……名画「聖母と黒衣の男」は今もどこかの密室で眠っている。",
+    keywords: {
+      strong:   ["警備カメラ","映像","証拠","指紋","合鍵","暗証番号","共犯","荷台","トラック","監視"],
+      core:     ["名画","絵画","聖母","ルネサンス","展示室","額縁","美術","贋作","盗難"],
+      pressure: ["白状","犯人","認めろ","吐け","嘘をつくな","本当のことを","隠すな","お前が","やった"],
+    },
+  },
+  {
+    id: "DATA-002",
+    name: "防衛省機密データ流出事件",
+    intro: "防衛省の内部ネットワークから、最高機密レベルの情報が外部サーバーへ送信されていた痕跡が発見された。内部アクセスログから浮かび上がったのは、システム管理部の三島 玲奈。深夜の単独アクセスが問題視されている。",
+    datetime: "20XX年11月3日（水）深夜0:11〜2:44",
+    location: "防衛省 情報システム管理室（地下2階）",
+    damage: "最高機密「オペレーションNX」関連データ計4.3GBが外部IPへ転送。国家安全保障上の重大リスク。",
+    suspectName: "三島 玲奈（34歳）",
+    suspectRole: "防衛省 情報システム管理官",
+    suspectEmoji: "💻",
+    openingLine: "……冗談じゃない。私は職務に忠実に仕事をしてきた。その深夜アクセスも業務上の緊急対応です。何か問題でも？",
+    confessionText: "……もういい。全部話す。\n夫が……夫が工作員に弱みを握られていた。私が協力しなければ、夫を殺すと言われた。脅されてやった。自分の意志じゃなかった……でも、やったのは私です。全部、私がやりました。",
+    winVerdict: "三島玲奈は外国工作機関による諜報活動への強制的協力を自白。夫への脅迫が事件の発端と判明し、対テロ特別捜査班が介入。国家安全保障上の全容解明が急がれている。",
+    loseVerdict: "三島玲奈は証拠不十分で釈放。その翌週、彼女は忽然と姿を消した……。流出したデータは今も誰かの手の中にある。",
+    keywords: {
+      strong:   ["アクセスログ","IPアドレス","転送","USBメモリ","証拠","カメラ","バックドア","ログ","記録"],
+      core:     ["機密","データ","ファイル","情報","サーバー","パスワード","暗号化","NX","流出"],
+      pressure: ["白状","スパイ","売った","認めろ","吐け","嘘をつくな","本当のことを","裏切り者","やった"],
+    },
+  },
+  {
+    id: "BANK-003",
+    name: "東都中央銀行・武装強盗事件",
+    intro: "東都中央銀行本店に3人組の覆面強盗が押し入り、現金2億3000万円を強奪した。現場から逃走する際に目撃された車両の所有者として、元警備員の桐島 修司が浮上した。自身は関与を完全否定している。",
+    datetime: "20XX年6月9日（金）10:42〜11:08",
+    location: "東都中央銀行 本店1F営業フロア",
+    damage: "現金2億3千万円強奪。行員2名が軽傷。発砲1発（天井）。防犯カメラ5台破壊。",
+    suspectName: "桐島 修司（41歳）",
+    suspectRole: "元同銀行 警備員（3ヶ月前に解雇）",
+    suspectEmoji: "🔫",
+    openingLine: "俺は何もしてない。その日は家にいた。一日中ひとりで家にいたんだ。誰かに確認したか？……誰もいないよ、ひとりだったんだから。",
+    confessionText: "……くそっ、くそっ！わかった、わかったよ！俺がやった！\nあの日、俺は計画を立てた。解雇通知をもらった日から、ずっと考えてた。仲間は2人いる。名前は……名前は言う。全部言う。でも俺の家族だけは、頼む……！",
+    winVerdict: "桐島修司は強盗への主導的関与を自白。共犯2名の氏名も供述し、翌日早朝に全員逮捕。強奪された現金2億3千万円のうち1億8千万円が回収された。",
+    loseVerdict: "桐島修司はアリバイが崩せず釈放。3週間後、同一手口の強盗が別の銀行で発生した……。奴は止まっていなかった。",
+    keywords: {
+      strong:   ["車","ナンバープレート","目撃者","防犯カメラ","証拠","指紋","銃","仲間","逃走経路","目撃"],
+      core:     ["銀行","強盗","現金","金","覆面","警備","間取り","金庫","強奪"],
+      pressure: ["白状","犯人","認めろ","吐け","仲間を売れ","嘘をつくな","アリバイ","嘘だ","やった"],
+    },
+  },
+  {
+    id: "POISON-004",
+    name: "連続毒物混入事件",
+    intro: "都内の高級マンション「パレスロイヤル恵比寿」で、住人3名が相次いで体調不良を訴え緊急搬送された。全員の飲料から微量の砒素化合物が検出。管理組合長の倉橋 哲夫に接触の機会があり、過去の近隣トラブルも浮上している。",
+    datetime: "20XX年9月〜10月（3件、各発症日時は捜査資料参照）",
+    location: "パレスロイヤル恵比寿 共用エリアおよび各被害者宅",
+    damage: "被害者3名（重体1名・軽傷2名）。砒素化合物の出所は現在特定中。保険金受取人への調査も進行中。",
+    suspectName: "倉橋 哲夫（61歳）",
+    suspectRole: "マンション管理組合長・元製薬会社勤務",
+    suspectEmoji: "🧪",
+    openingLine: "……何ですか、これは。私は管理組合長として住人の安全を守る立場にある。なぜ私が疑われなければならないんですか。冷静に話しましょう。",
+    confessionText: "……もう終わりにしましょう。\n301号室の桐原は……4年前、私の妻に手を出した。証拠もあった。でも警察は動かなかった。弁護士も無力だった。だから私が……処理することにした。他の2人は……目撃しそうだったから。全部、私がやった。後悔はしていない。",
+    winVerdict: "倉橋哲夫は3件の毒物混入を自白。動機は4年前の私怨と判明。製薬会社勤務で培った知識を利用した計画的犯行であり、重体の被害者1名は一命を取り留めた。",
+    loseVerdict: "倉橋哲夫は証拠不十分で釈放。落ち着いた足取りで取調室を出た彼は、穏やかに「お疲れ様でした」と言い残した……。第4の被害者が出るのは、3日後のことだった。",
+    keywords: {
+      strong:   ["砒素","毒物","証拠","購入履歴","化学","薬品","カメラ","指紋","検出","分析"],
+      core:     ["被害者","飲み物","共用部","マンション","混入","体調不良","搬送","保険","毒"],
+      pressure: ["白状","犯人","認めろ","吐け","嘘をつくな","隠すな","殺そうとした","動機","やった"],
+    },
+  },
+  {
+    id: "ARSON-005",
+    name: "自社ビル放火・保険金詐欺事件",
+    intro: "港区にある中堅IT企業「テクノフューチャー社」のビルが深夜に全焼した。火災保険10億円の請求が翌朝すぐに行われ、不審に思った保険会社が調査を依頼。代表取締役の高野 俊介が任意同行を求められた。会社は10億超の負債を抱えていた。",
+    datetime: "20XX年2月3日（土）深夜2:08頃 出火",
+    location: "港区南青山4丁目「テクノフューチャービル」（地上6階建て）",
+    damage: "ビル全焼（損害額推定12億円）。深夜のため死傷者なし。保険金請求額10億2千万円。出火原因は「放火」と断定。",
+    suspectName: "高野 俊介（47歳）",
+    suspectRole: "テクノフューチャー株式会社 代表取締役",
+    suspectEmoji: "🔥",
+    openingLine: "……私が放火？冗談じゃない。あのビルは20年かけて建てた私の城だ。なぜ自分で燃やす必要がある。保険金の請求が早かった？それは準備していたからじゃない、当然の手続きだ。",
+    confessionText: "……（長い沈黙の後、静かに）……わかった。話す。\n負債が……10億を超えていた。銀行も見放した。社員に給料を払えなくなる前に……保険金で全部清算しようと思った。火をつけたのは……私だ。でも社員を傷つけたくなかった。だから深夜を選んだ。それだけは……信じてほしい。",
+    winVerdict: "高野俊介は自社ビルへの放火と保険金詐欺未遂を自白。負債総額は12億3千万円に上ることが判明。社員への給与不払い問題も同時に捜査対象となった。保険金は支払われなかった。",
+    loseVerdict: "高野俊介は証拠不十分で釈放。翌月、保険会社は一部の保険金を支払った。その3ヶ月後、同じ手口の火災が高野の別の関連会社で発生した……。",
+    keywords: {
+      strong:   ["ガソリン","着火剤","証拠","防犯カメラ","映像","指紋","現場","出火原因","保険契約","資産移動"],
+      core:     ["保険","火災","負債","資金","ビル","経営","社員","給料","放火","出火"],
+      pressure: ["白状","犯人","認めろ","吐け","嘘をつくな","やった","本当のことを","隠すな","自分で燃やした"],
+    },
+  },
+  {
+    id: "HEIST-006",
+    name: "銀座宝飾店・ダイヤ強奪事件",
+    intro: "銀座の老舗宝飾店「マルゼン・ジュエリー」から、総額8億円相当のダイヤモンド原石14点が強奪された。内部の防犯システムが完璧に無効化されており、元鑑定士の桑原 誠一が浮上した。20年間勤めた後、突然解雇されていた。",
+    datetime: "20XX年12月24日（月）閉店後21:15〜21:52",
+    location: "マルゼン・ジュエリー 銀座本店 地下金庫室",
+    damage: "ダイヤモンド原石14点（総額推定8億円）強奪。警備員1名が縛られ軽傷。防犯システムが事前に無効化されていた。",
+    suspectName: "桑原 誠一（52歳）",
+    suspectRole: "元同店 宝石鑑定士（4ヶ月前に突然解雇）",
+    suspectEmoji: "💎",
+    openingLine: "……私が？（静かに笑う）20年間、一度も不正なんてしたことがない。なぜ私を疑う。防犯システムに詳しい人間なら他にもいる。",
+    confessionText: "……（静かに）……わかった。話す。\n防犯システムの情報を渡した。設計図も。ただし、実行したのは別の人間だ。私は……情報提供しただけだ。でも……それが共犯だということは……わかってた。20年間、退職金も出なかった。あの社長の顔を……見たかった。それだけだ。",
+    winVerdict: "桑原誠一は防犯情報の提供による強盗幇助を自白。実行犯グループとの接触経緯も供述し、翌朝に実行犯3名が逮捕された。強奪された原石14点のうち11点が未流通のまま回収された。",
+    loseVerdict: "桑原誠一は証拠不十分で釈放。帰り際、彼はただ一言「良いお年を」と言い残した……。8億円分のダイヤはすでに国外へ持ち出された後だった。",
+    keywords: {
+      strong:   ["設計図","防犯システム","証拠","指紋","カメラ","共犯","情報","金庫","記録","接触"],
+      core:     ["宝石","ダイヤ","鑑定","金庫","店","解雇","退職金","原石","価値"],
+      pressure: ["白状","犯人","認めろ","吐け","嘘をつくな","やった","共犯","売った","本当のことを"],
+    },
+  },
+];
+
+// ============================================================
+// ゲーム状態
+// ============================================================
+const MAX_QUESTIONS = 10;
+let currentCase        = null;
+let confessionMeter    = 0;
+let remainingQuestions = MAX_QUESTIONS;
+let gameOver           = false;
+let lastCaseId         = null;
+let usedIdx            = {};
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+function getRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function escapeHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function extractWord(text) {
+  const m = text.match(/[\u3041-\u9FFF]{2,6}/g) || [];
+  if (!m.length) return text.slice(0, 4) || "それ";
+  return m.reduce((a, b) => a.length >= b.length ? a : b);
+}
+
+function getPhase() {
+  if (confessionMeter < 34) return 0;
+  if (confessionMeter < 67) return 1;
+  return 2;
+}
+
+function pickResponse(caseId, category, phase, playerInput) {
+  const pool = RESPONSE_LIB[caseId]?.[category]?.[phase]
+            || RESPONSE_LIB[caseId]?.other?.[phase]
+            || ["……（黙っている）"];
+  const key = `${caseId}_${category}_${phase}`;
+  if (!usedIdx[key]) usedIdx[key] = [];
+  if (usedIdx[key].length >= pool.length) usedIdx[key] = [];
+  const unused = pool.map((_,i)=>i).filter(i=>!usedIdx[key].includes(i));
+  const idx    = unused[Math.floor(Math.random() * unused.length)];
+  usedIdx[key].push(idx);
+  const word = escapeHtml(extractWord(playerInput));
+  return pool[idx].replace(/\{W\}/g, word);
+}
+
+// ============================================================
+// DOM参照
+// ============================================================
+const chatLog        = document.getElementById("chat-log");
+const meterFill      = document.getElementById("meter-fill");
+const meterValueEl   = document.getElementById("meter-value");
+const remainingEl    = document.getElementById("remaining-count");
+const inputEl        = document.getElementById("question-input");
+const btnInterrogate = document.getElementById("btn-interrogate");
+
+// ============================================================
+// チャットUI
+// ============================================================
+function appendSuspect(html) {
+  const d = document.createElement("div");
+  d.className = "msg-suspect";
+  d.innerHTML = `<div class="avatar avatar-suspect">${currentCase.suspectEmoji}</div>
+    <div class="bubble-wrap">
+      <div class="bubble-name">${escapeHtml(currentCase.suspectName)}</div>
+      <div class="bubble bubble-suspect">${html}</div>
+    </div>`;
+  chatLog.appendChild(d);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return d;
+}
+
+function appendSuspectRaw(text) {
+  return appendSuspect(escapeHtml(text).replace(/\n/g,"<br>"));
+}
+
+function appendPlayer(text) {
+  const d = document.createElement("div");
+  d.className = "msg-player";
+  d.innerHTML = `<div class="avatar avatar-player">🕵️</div>
+    <div class="bubble-wrap">
+      <div class="bubble-name bubble-name-player">警部補 剛田</div>
+      <div class="bubble bubble-player">${escapeHtml(text)}</div>
+    </div>`;
+  chatLog.appendChild(d);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function appendSystem(text) {
+  const d = document.createElement("div");
+  d.className = "msg-system";
+  d.textContent = text;
+  chatLog.appendChild(d);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// ============================================================
+// メーター・カウンター
+// ============================================================
+function updateMeter(newVal) {
+  confessionMeter = Math.min(100, Math.max(0, newVal));
+  const pct = Math.round(confessionMeter);
+  meterFill.style.width = pct + "%";
+  meterValueEl.textContent = pct + "%";
+  meterFill.classList.remove("bump");
+  void meterFill.offsetWidth;
+  meterFill.classList.add("bump");
+  if (pct >= 80)      meterFill.style.background = "linear-gradient(90deg,#a93226 0%,#e74c3c 40%,#ff6b6b 100%)";
+  else if (pct >= 50) meterFill.style.background = "linear-gradient(90deg,#922b21 0%,#c0392b 50%,#e74c3c 100%)";
+  else                meterFill.style.background = "";
+}
+
+function updateRemaining() {
+  remainingEl.textContent = remainingQuestions;
+  if (remainingQuestions <= 3)      remainingEl.style.color = "#f85149";
+  else if (remainingQuestions <= 5) remainingEl.style.color = "#ffa657";
+  else                              remainingEl.style.color = "";
+}
+
+function setDisabled(v) { inputEl.disabled = v; btnInterrogate.disabled = v; }
+
+// ============================================================
+// キーワード分類
+// ============================================================
+function classify(text) {
+  const kw = currentCase.keywords;
+  for (const w of kw.strong)   { if (text.includes(w)) return "strong"; }
+  for (const w of kw.core)     { if (text.includes(w)) return "core"; }
+  for (const w of kw.pressure) { if (text.includes(w)) return "pressure"; }
+  return "other";
+}
+
+// ============================================================
+// メインロジック
+// ============================================================
+function handleInterrogate() {
+  if (gameOver) return;
+  const raw = inputEl.value.trim();
+  if (!raw) {
+    inputEl.focus();
+    inputEl.style.borderColor = "#f85149";
+    setTimeout(() => { inputEl.style.borderColor = ""; }, 700);
+    return;
+  }
+
+  // SE：問い詰め
+  SE.interrogate();
+
+  remainingQuestions--;
+  updateRemaining();
+  appendPlayer(raw);
+  inputEl.value = "";
+
+  const cat   = classify(raw);
+  const phase = getPhase();
+  let inc = 0;
+
+  switch (cat) {
+    case "strong":
+      inc = 30;
+      SE.strong();
+      flash("red");
+      appendSystem("— 容疑者の表情が歪んだ —");
+      break;
+    case "core":
+      inc = 15;
+      SE.core();
+      appendSystem("— 容疑者が一瞬言葉に詰まった —");
+      break;
+    case "pressure":
+      inc = 10;
+      SE.pressure();
+      break;
+    default:
+      inc = 5;
+      SE.other();
+  }
+
+  updateMeter(confessionMeter + inc);
+  SE.meterUp(inc);
+
+  // 残り少ない警告
+  if (remainingQuestions <= 3 && remainingQuestions > 0) {
+    setTimeout(() => SE.warning(), 300);
+  }
+
+  // アバターシェイク
+  if (inc >= 30) {
+    const avs = chatLog.querySelectorAll(".avatar-suspect");
+    if (avs.length) {
+      const a = avs[avs.length - 1];
+      a.classList.remove("shake"); void a.offsetWidth; a.classList.add("shake");
+    }
+  }
+
+  // 勝利チェック
+  if (confessionMeter >= 100) {
+    setTimeout(() => {
+      SE.confession();
+      flash("white");
+      appendSuspectRaw(currentCase.confessionText);
+      appendSystem("━━ 自白 ━━");
+      gameOver = true;
+      setDisabled(true);
+      setTimeout(() => { SE.win(); showModal("win"); }, 1400);
+    }, 350);
+    return;
+  }
+
+  // 応答
+  const delay = 400 + Math.random() * 300;
+  setTimeout(() => {
+    const reply = pickResponse(currentCase.id, cat, phase, raw);
+    appendSuspect(reply.replace(/\n/g,"<br>"));
+
+    if (remainingQuestions <= 0) {
+      setTimeout(() => {
+        appendSystem("━━ 尋問時間終了。容疑者は釈放された ━━");
+        gameOver = true;
+        setDisabled(true);
+        SE.lose();
+        setTimeout(() => showModal("lose"), 1000);
+      }, 700);
+    }
+  }, delay);
+}
+
+// ============================================================
+// モーダル
+// ============================================================
+function showModal(type) {
+  if (type === "win") {
+    document.getElementById("win-body").innerHTML    = escapeHtml(currentCase.suspectName) + "はついに全てを認めた。";
+    document.getElementById("win-verdict").innerHTML = "<strong>捜査結果：</strong>" + escapeHtml(currentCase.winVerdict);
+    document.getElementById("modal-win").classList.add("active");
+  } else {
+    document.getElementById("lose-body").innerHTML    = "証拠不十分で" + escapeHtml(currentCase.suspectName) + "は釈放された。";
+    document.getElementById("lose-verdict").innerHTML = "<strong>捜査結果：</strong>" + escapeHtml(currentCase.loseVerdict);
+    document.getElementById("modal-lose").classList.add("active");
+  }
+}
+
+function showNewCaseOrRetry(newCase) {
+  document.getElementById("modal-win").classList.remove("active");
+  document.getElementById("modal-lose").classList.remove("active");
+  if (newCase) pickAndShowIntro(true);
+  else         startGame();
+}
+
+// ============================================================
+// 事件選択・ゲーム初期化
+// ============================================================
+function pickAndShowIntro(avoidLast) {
+  let pool = CASES;
+  if (avoidLast && CASES.length > 1) pool = CASES.filter(c => c.id !== lastCaseId);
+  currentCase = getRandom(pool);
+  lastCaseId  = currentCase.id;
+  document.getElementById("intro-case-name").textContent = currentCase.name;
+  document.getElementById("intro-sub").textContent       = currentCase.intro;
+  document.getElementById("intro-overlay").classList.add("active");
+}
+
+function startGame() {
+  document.getElementById("intro-overlay").classList.remove("active");
+  confessionMeter    = 0;
+  remainingQuestions = MAX_QUESTIONS;
+  gameOver           = false;
+  usedIdx            = {};
+  meterFill.style.width      = "0%";
+  meterFill.style.background = "";
+  meterValueEl.textContent   = "0%";
+  updateRemaining();
+  document.getElementById("header-title").textContent      = "特捜部：" + currentCase.name + "・尋問室";
+  document.title                                           = "特捜部：" + currentCase.name;
+  document.getElementById("case-number").textContent       = "CASE #" + currentCase.id;
+  document.getElementById("case-name-display").textContent = currentCase.name;
+  document.getElementById("cf-datetime").textContent       = currentCase.datetime;
+  document.getElementById("cf-location").textContent       = currentCase.location;
+  document.getElementById("cf-damage").textContent         = currentCase.damage;
+  document.getElementById("cf-suspect").textContent        = currentCase.suspectName + "　／　" + currentCase.suspectRole;
+  chatLog.innerHTML = "";
+  setDisabled(false);
+  appendSystem("━━ CASE " + currentCase.id + "　尋問開始 ━━");
+  appendSuspectRaw(currentCase.openingLine);
+  inputEl.focus();
+}
+
+document.getElementById("question-input").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleInterrogate(); }
+});
+
+pickAndShowIntro(false);
+</script>
+</body>
+</html>
